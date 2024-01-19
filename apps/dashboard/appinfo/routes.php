@@ -33,7 +33,9 @@ return [
 		['name' => 'dashboardApi#getWidgets', 'url' => '/api/v1/widgets', 'verb' => 'GET'],
 		['name' => 'dashboardApi#getWidgetItems', 'url' => '/api/v1/widget-items', 'verb' => 'GET'],
 		['name' => 'dashboardApi#getWidgetItemsV2', 'url' => '/api/v2/widget-items', 'verb' => 'GET'],
+		['name' => 'dashboardApi#getLayout', 'url' => '/layout', 'verb' => 'GET'],
 		['name' => 'dashboardApi#updateLayout', 'url' => '/layout', 'verb' => 'POST'],
+		['name' => 'dashboardApi#getStatuses', 'url' => '/statuses', 'verb' => 'GET'],
 		['name' => 'dashboardApi#updateStatuses', 'url' => '/statuses', 'verb' => 'POST'],
 	]
 ];
