@@ -348,12 +348,12 @@ export default {
 			}
 		},
 		saveLayout() {
-			axios.post(generateUrl('/apps/dashboard/layout'), {
+			axios.post(generateOcsUrl('/apps/dashboard/layout'), {
 				layout: this.layout.join(','),
 			})
 		},
 		saveStatuses() {
-			axios.post(generateUrl('/apps/dashboard/statuses'), {
+			axios.post(generateOcsUrl('/apps/dashboard/statuses'), {
 				statuses: JSON.stringify(this.enabledStatuses),
 			})
 		},
