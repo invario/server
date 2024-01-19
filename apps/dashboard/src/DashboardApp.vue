@@ -228,7 +228,7 @@ export default {
 			return (panel) => this.layout.indexOf(panel.id) > -1
 		},
 		isStatusActive() {
-			return (status) => !(status in this.enabledStatuses) || this.enabledStatuses[status]
+			return (status) => this.enabledStatuses.findIndex((s) => s === status) !== -1
 		},
 
 		sortedAllStatuses() {
@@ -349,12 +349,12 @@ export default {
 		},
 		saveLayout() {
 			axios.post(generateOcsUrl('/apps/dashboard/layout'), {
-				layout: this.layout.join(','),
+				layout: this.layout,
 			})
 		},
 		saveStatuses() {
 			axios.post(generateOcsUrl('/apps/dashboard/statuses'), {
-				statuses: JSON.stringify(this.enabledStatuses),
+				statuses: this.enabledStatuses,
 			})
 		},
 		showModal() {
@@ -394,13 +394,16 @@ export default {
 			}
 		},
 		enableStatus(app) {
-			this.enabledStatuses[app] = true
+			this.enabledStatuses.push(app);
 			this.registerStatus(app, this.allCallbacksStatus[app])
 			this.saveStatuses()
 		},
 		disableStatus(app) {
-			this.enabledStatuses[app] = false
-			const i = this.registeredStatus.findIndex((s) => s === app)
+			let i = this.enabledStatuses.findIndex((s) => s === app)
+			if (i !== -1) {
+				this.enabledStatuses.splice(i, 1)
+			}
+			i = this.registeredStatus.findIndex((s) => s === app)
 			if (i !== -1) {
 				this.registeredStatus.splice(i, 1)
 				Vue.set(this.statuses, app, { mounted: false })
