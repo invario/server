@@ -687,10 +687,14 @@ class Cache implements ICache {
 				throw new \Exception('Invalid target storage id: ' . $targetStorageId);
 			}
 
-			$this->connection->beginTransaction();
 			if ($sourceData['mimetype'] === 'httpd/unix-directory') {
 				//update all child entries
 				$sourceLength = mb_strlen($sourcePath);
+
+				$childIds = $this->getChildIds($sourceStorageId, $sourcePath);
+
+				$childChunks = array_chunk($childIds, 1000);
+
 				$query = $this->connection->getQueryBuilder();
 
 				$fun = $query->func();
@@ -703,7 +707,7 @@ class Cache implements ICache {
 					->set('path_hash', $fun->md5($newPathFunction))
 					->set('path', $newPathFunction)
 					->where($query->expr()->eq('storage', $query->createNamedParameter($sourceStorageId, IQueryBuilder::PARAM_INT)))
-					->andWhere($query->expr()->like('path', $query->createNamedParameter($this->connection->escapeLikeParameter($sourcePath) . '/%')));
+					->andWhere($query->expr()->in('fileid', $query->createParameter('files')));
 
 				// when moving from an encrypted storage to a non-encrypted storage remove the `encrypted` mark
 				if ($sourceCache->hasEncryptionWrapper() && !$this->hasEncryptionWrapper()) {
@@ -711,11 +715,17 @@ class Cache implements ICache {
 				}
 
 				try {
-					$query->execute();
+					$this->connection->beginTransaction();
+					foreach ($childChunks as $chunk) {
+						$query->setParameter('files', $chunk, IQueryBuilder::PARAM_INT_ARRAY);
+						$query->execute();
+					}
 				} catch (\OC\DatabaseException $e) {
 					$this->connection->rollBack();
 					throw $e;
 				}
+			} else {
+				$this->connection->beginTransaction();
 			}
 
 			$query = $this->getQueryBuilder();
@@ -749,6 +759,15 @@ class Cache implements ICache {
 		} else {
 			$this->moveFromCacheFallback($sourceCache, $sourcePath, $targetPath);
 		}
+	}
+
+	private function getChildIds(int $storageId, string $path): array {
+		$query = $this->connection->getQueryBuilder();
+		$query->select('fileid')
+			->from('filecache')
+			->where($query->expr()->eq('storage', $query->createNamedParameter($storageId, IQueryBuilder::PARAM_INT)))
+			->andWhere($query->expr()->like('path', $query->createNamedParameter($this->connection->escapeLikeParameter($path) . '/%')));
+		return $query->executeQuery()->fetchAll(\PDO::FETCH_COLUMN);
 	}
 
 	/**
