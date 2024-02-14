@@ -22,6 +22,7 @@
 namespace Test\Files\Cache;
 
 use OC\DB\QueryBuilder\Literal;
+use OC\DB\QueryBuilder\QueryBuilder;
 use OC\Files\Cache\SearchBuilder;
 use OC\Files\Search\SearchBinaryOperator;
 use OC\Files\Search\SearchComparison;
@@ -50,7 +51,9 @@ class SearchBuilderTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
+		/** @var QueryBuilder builder */
 		$this->builder = \OC::$server->getDatabaseConnection()->getQueryBuilder();
+		$this->builder->setSharded(true);
 		$this->mimetypeLoader = $this->createMock(IMimeTypeLoader::class);
 
 		$this->mimetypeLoader->expects($this->any())
