@@ -8,7 +8,7 @@
 				<IconColorPalette v-else :size="20" />
 			</button>
 		</NcColorPicker>
-		<NcButton type="tertiary" :disabled="primaryColor === defaultColor" @click="primaryColor = defaultColor">
+		<NcButton type="tertiary" :disabled="isdefaultPrimaryColor" @click="onReset">
 			<template #icon>
 				<IconUndo :size="20" />
 			</template>
@@ -22,6 +22,7 @@ import { showError } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
 import { translate as t } from '@nextcloud/l10n'
 import { generateOcsUrl } from '@nextcloud/router'
+import { colord } from 'colord'
 import { defineComponent } from 'vue'
 
 import axios from '@nextcloud/axios'
@@ -30,10 +31,12 @@ import NcColorPicker from '@nextcloud/vue/dist/Components/NcColorPicker.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import IconColorPalette from 'vue-material-design-icons/Palette.vue'
 import IconUndo from 'vue-material-design-icons/UndoVariant.vue'
-import { subscribe } from '@nextcloud/event-bus'
+
+const { primaryColor, defaultPrimaryColor } = loadState('theming', 'data', { primaryColor: '#0082c9', defaultPrimaryColor: '#0082c9' })
 
 export default defineComponent({
 	name: 'UserPrimaryColor',
+
 	components: {
 		IconColorPalette,
 		IconUndo,
@@ -41,17 +44,20 @@ export default defineComponent({
 		NcColorPicker,
 		NcLoadingIcon,
 	},
+
+	emits: ['refresh-styles'],
+
 	data() {
-		const { primaryColor, defaultColor } = loadState('theming', 'data', { primaryColor: '#0082c9', defaultColor: '#0082c9' })
 		return {
-			defaultColor,
 			primaryColor,
 			loading: false,
 		}
 	},
 
-	mounted() {
-		subscribe('theming:global-styles-refreshed', this.onRefresh)
+	computed: {
+		isdefaultPrimaryColor() {
+			return colord(this.primaryColor).isEqual(colord(defaultPrimaryColor))
+		},
 	},
 
 	methods: {
@@ -60,23 +66,32 @@ export default defineComponent({
 		/**
 		 * Global styles are reloaded so we might need to update the current value
 		 */
-		onRefresh() {
+		reload() {
 			const newColor = window.getComputedStyle(this.$refs.trigger).backgroundColor
 			if (newColor.toLowerCase() !== this.primaryColor) {
 				this.primaryColor = newColor
 			}
 		},
 
-		async onUpdate(value: string) {
+		onReset() {
+			this.primaryColor = defaultPrimaryColor
+			this.onUpdate(null)
+		},
+
+		async onUpdate(value: string | null) {
 			this.loading = true
 			const url = generateOcsUrl('apps/provisioning_api/api/v1/config/users/{appId}/{configKey}', {
 				appId: 'theming',
 				configKey: 'primary_color',
 			})
 			try {
-				await axios.post(url, {
-					configValue: value,
-				})
+				if (value) {
+					await axios.post(url, {
+						configValue: value,
+					})
+				} else {
+					await axios.delete(url)
+				}
 				this.$emit('refresh-styles')
 			} catch (e) {
 				console.error('Could not update primary color', e)
