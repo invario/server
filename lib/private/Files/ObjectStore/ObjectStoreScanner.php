@@ -76,7 +76,7 @@ class ObjectStoreScanner extends Scanner {
 	 * @throws \OCP\DB\Exception
 	 */
 	private function getIncomplete() {
-		$query = $this->connection->getQueryBuilder();
+		$query = $this->cache->getQueryBuilder();
 		$query->select('path')
 			->from('filecache')
 			->where($query->expr()->eq('storage', $query->createNamedParameter($this->cache->getNumericStorageId(), IQueryBuilder::PARAM_INT)))
