@@ -92,7 +92,7 @@ class CacheDatabase {
 		return $result;
 	}
 
-	private function getShardForStorageId(int $storage): int {
+	public function getShardForStorageId(int $storage): int {
 		return 0;
 	}
 
