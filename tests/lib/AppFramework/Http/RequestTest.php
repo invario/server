@@ -2219,7 +2219,7 @@ class RequestTest extends \Test\TestCase {
 	 * @dataProvider invalidTokenDataProvider
 	 * @param string $invalidToken
 	 */
-	public function testPassesCSRFCheckWithInvalidToken($invalidToken) {
+	public function testFailsCSRFCheckWithInvalidToken($invalidToken) {
 		/** @var Request $request */
 		$request = $this->getMockBuilder('\OC\AppFramework\Http\Request')
 			->setMethods(['getScriptName'])
@@ -2246,7 +2246,7 @@ class RequestTest extends \Test\TestCase {
 		$this->assertFalse($request->passesCSRFCheck());
 	}
 
-	public function testPassesCSRFCheckWithoutTokenFail() {
+	public function testFailsCSRFCheckWithoutToken() {
 		/** @var Request $request */
 		$request = $this->getMockBuilder('\OC\AppFramework\Http\Request')
 			->setMethods(['getScriptName'])
