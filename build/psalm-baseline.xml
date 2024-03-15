@@ -3181,6 +3181,8 @@
       <code>DO_NOT_REMEMBER</code>
       <code>PERMANENT_TOKEN</code>
       <code>REMEMBER</code>
+      <code>SCOPE_FILESYSTEM</code>
+      <code>SCOPE_SINGLE_SIGN_ON</code>
       <code>TEMPORARY_TOKEN</code>
       <code>WIPE_TOKEN</code>
     </AmbiguousConstantInheritance>

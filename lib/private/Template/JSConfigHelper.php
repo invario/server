@@ -39,6 +39,7 @@ use OC\CapabilitiesManager;
 use OC\Share\Share;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
+use OCP\Authentication\Token\IToken;
 use OCP\Constants;
 use OCP\Defaults;
 use OCP\Files\FileInfo;
@@ -302,6 +303,6 @@ class JSConfigHelper {
 	protected function isUserLoggedInViaSSO(): bool {
 		$token = $this->tokenProvider->getToken($this->session->getId());
 		$scope = $token->getScopeAsArray();
-		return isset($scope['sso-based-login']) && $scope['sso-based-login'] === true;
+		return isset($scope[IToken::SCOPE_SINGLE_SIGN_ON]) && $scope[IToken::SCOPE_SINGLE_SIGN_ON] === true;
 	}
 }

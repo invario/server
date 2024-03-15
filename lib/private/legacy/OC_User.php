@@ -38,6 +38,7 @@
 
 use OC\Authentication\Token\IProvider;
 use OC\User\LoginException;
+use OCP\Authentication\Token\IToken;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IGroupManager;
 use OCP\ISession;
@@ -202,7 +203,7 @@ class OC_User {
 				if (empty($password)) {
 					$tokenProvider = \OC::$server->get(IProvider::class);
 					$token = $tokenProvider->getToken($userSession->getSession()->getId());
-					$token->setScope(['sso-based-login' => true]);
+					$token->setScope([IToken::SCOPE_SINGLE_SIGN_ON => true]);
 					$tokenProvider->updateToken($token);
 				}
 
