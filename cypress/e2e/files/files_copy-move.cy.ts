@@ -35,7 +35,6 @@ describe('Files: Move or copy files', { testIsolation: true }, () => {
 		cy.deleteUser(currentUser)
 	})
 
-
 	it('Can copy a file to new folder', () => {
 		cy.uploadContent(currentUser, new Blob(), 'text/plain', '/original.txt')
 			.mkdir(currentUser, '/new-folder')
@@ -198,7 +197,7 @@ describe('Files: Move or copy files', { testIsolation: true }, () => {
 	})
 
 	/** Test for https://github.com/nextcloud/server/issues/43329 */
-	context.only('escaping file and folder names', () => {
+	context('escaping file and folder names', () => {
 		it('Can handle files with special characters', () => {
 			cy.uploadContent(currentUser, new Blob(), 'text/plain', '/original.txt')
 				.mkdir(currentUser, '/can\'t say')
