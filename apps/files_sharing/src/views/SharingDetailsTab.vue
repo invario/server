@@ -372,10 +372,14 @@ export default {
 		 */
 		canDownload: {
 			get() {
-				return this.share.hasDownloadPermission
+				return this.share.attributes.find(attr => attr.key === 'download')?.enabled || false
 			},
 			set(checked) {
-				this.updateAtomicPermissions({ isDownloadChecked: checked })
+				// Find the 'download' attribute and update its value
+				const downloadAttr = this.share.attributes.find(attr => attr.key === 'download')
+				if (downloadAttr) {
+					downloadAttr.enabled = checked
+				}
 			},
 		},
 		/**
@@ -679,7 +683,6 @@ export default {
 			isCreateChecked = this.canCreate,
 			isDeleteChecked = this.canDelete,
 			isReshareChecked = this.canReshare,
-			isDownloadChecked = this.canDownload,
 		} = {}) {
 			// calc permissions if checked
 			const permissions = 0
@@ -689,9 +692,6 @@ export default {
 				| (isEditChecked ? ATOMIC_PERMISSIONS.UPDATE : 0)
 				| (isReshareChecked ? ATOMIC_PERMISSIONS.SHARE : 0)
 			this.share.permissions = permissions
-			if (this.share.hasDownloadPermission !== isDownloadChecked) {
-				this.$set(this.share, 'hasDownloadPermission', isDownloadChecked)
-			}
 		},
 		expandCustomPermissions() {
 			if (!this.advancedSectionAccordionExpanded) {
@@ -855,7 +855,7 @@ export default {
 					shareType: share.shareType,
 					shareWith: share.shareWith,
 					permissions: share.permissions,
-					attributes: JSON.stringify(fileInfo.shareAttributes),
+					attributes: JSON.stringify(share.attributes),
 					...(share.note ? { note: share.note } : {}),
 					...(share.password ? { password: share.password } : {}),
 					...(share.expireDate ? { expireDate: share.expireDate } : {}),
@@ -1000,7 +1000,7 @@ export default {
 						flex-direction: column;
 					}
 				}
-				
+
 				/* Target component based style in NcCheckboxRadioSwitch slot content*/
 				:deep(span.checkbox-content__text.checkbox-radio-switch__text) {
 					flex-wrap: wrap;
