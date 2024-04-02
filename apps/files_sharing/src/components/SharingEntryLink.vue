@@ -238,6 +238,7 @@ export default {
 
 	data() {
 		return {
+			shareCreationComplete: false,
 			showDropdown: false,
 			copySuccess: true,
 			copied: false,
@@ -296,7 +297,7 @@ export default {
 		 * @return {string}
 		 */
 		subtitle() {
-			if (this.isEmailShareType
+			if (this.isEmailShareTypef
 				&& this.title !== this.share.shareWith) {
 				return this.share.shareWith
 			}
@@ -483,6 +484,7 @@ export default {
 		 * Create a new share link and append it to the list
 		 */
 		async onNewLinkShare() {
+			console.log('Level 0')
 			// do not run again if already loading
 			if (this.loading) {
 				return
@@ -500,13 +502,17 @@ export default {
 			// do not push yet if we need a password or an expiration date: show pending menu
 			if (this.config.enableLinkPasswordByDefault || this.config.enforcePasswordForPublicLink || this.config.isDefaultExpireDateEnforced) {
 				this.pending = true
+				this.shareCreationComplete = false
 
 				// if a share already exists, pushing it
 				if (this.share && !this.share.id) {
 					// if the share is valid, create it on the server
 					if (this.checkShare(this.share)) {
 						try {
-							await this.pushNewLinkShare(this.share, true)
+							console.log('Level 1')
+							debugger
+							const success = await this.pushNewLinkShare(this.share, true)
+							console.log('Level 2', success)
 						} catch (e) {
 							this.pending = false
 							console.error(e)
@@ -536,12 +542,17 @@ export default {
 				// freshly created share component
 				this.open = false
 				this.pending = false
+				this.shareCreationComplete = true
 				component.open = true
+				console.log('Level 3')
 
 				// Nothing is enforced, creating share directly
 			} else {
 				const share = new Share(shareDefaults)
+				console.log('Level 4')
 				await this.pushNewLinkShare(share)
+				this.shareCreationComplete = true
+				console.log('Level 5')
 			}
 		},
 
@@ -582,7 +593,6 @@ export default {
 
 				this.open = false
 				console.debug('Link share created', newShare)
-
 				// if share already exists, copy link directly on next tick
 				let component
 				if (update) {
@@ -609,12 +619,16 @@ export default {
 				showSuccess(t('files_sharing', 'Link share created'))
 
 			} catch (data) {
+				console.log('Error null')
 				const message = data?.response?.data?.ocs?.meta?.message
 				if (!message) {
 					showError(t('files_sharing', 'Error while creating the share'))
 					console.error(data)
+					console.log('Error a')
 					return
 				}
+
+				console.log('Error b')
 
 				if (message.match(/password/i)) {
 					this.onSyncError('password', message)
@@ -624,8 +638,13 @@ export default {
 					this.onSyncError('pending', message)
 				}
 				throw data
+
+				console.log('Error c')
+				
 			} finally {
 				this.loading = false
+				this.shareCreationComplete = true
+				console.log('End of share creation')
 			}
 		},
 		async copyLink() {
@@ -723,12 +742,17 @@ export default {
 		/**
 		 * Cancel the share creation
 		 * Used in the pending popover
+		 *
+		 * @param e
 		 */
-		onCancel() {
+		onCancel(e) {
+			console.log("SHARE COMPLETE", this.shareCreationComplete)
 			// this.share already exists at this point,
 			// but is incomplete as not pushed to server
 			// YET. We can safely delete the share :)
-			this.$emit('remove:share', this.share)
+			if (!this.shareCreationComplete) {
+				this.$emit('remove:share', this.share)
+			}
 		},
 
 		toggleQuickShareSelect() {
