@@ -84,8 +84,7 @@ class CachedSubscriptionImpl implements ICalendar {
 	 * @since 13.0.0
 	 */
 	public function search(string $pattern, array $searchProperties = [], array $options = [], $limit = null, $offset = null): array {
-		return $this->backend->search($this->calendarInfo, $pattern,
-			$searchProperties, $options, $limit, $offset);
+		return $this->backend->search($this->calendarInfo, $pattern, $searchProperties, $options, $limit, $offset);
 	}
 
 	/**
