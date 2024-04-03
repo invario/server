@@ -41,6 +41,8 @@ use OCP\Calendar\Resource\IBackend as IResourceBackend;
 use OCP\Calendar\Room\IBackend as IRoomBackend;
 use OCP\Capabilities\ICapability;
 use OCP\Collaboration\Reference\IReferenceProvider;
+use OCP\ConfigLexicon\IConfigLexicon;
+use OCP\ConfigLexicon\IConfigValue;
 use OCP\Dashboard\IManager;
 use OCP\Dashboard\IWidget;
 use OCP\EventDispatcher\IEventDispatcher;
@@ -59,6 +61,8 @@ use OCP\Teams\ITeamResourceProvider;
 use OCP\TextProcessing\IProvider as ITextProcessingProvider;
 use OCP\Translation\ITranslationProvider;
 use OCP\UserMigration\IMigrator as IUserMigrator;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
@@ -159,6 +163,9 @@ class RegistrationContext {
 
 	/** @var ServiceRegistration<IDeclarativeSettingsForm>[] */
 	private array $declarativeSettings = [];
+
+	/** @var array<array-key, string> */
+	private array $configLexiconClasses = [];
 
 	/** @var ServiceRegistration<ITeamResourceProvider>[] */
 	private array $teamResourceProviders = [];
@@ -411,6 +418,13 @@ class RegistrationContext {
 					$declarativeSettingsClass
 				);
 			}
+
+			public function registerConfigLexicon(string $configLexiconClass): void {
+				$this->context->registerConfigLexicon(
+					$this->appId,
+					$configLexiconClass
+				);
+			}
 		};
 	}
 
@@ -590,6 +604,10 @@ class RegistrationContext {
 		$this->declarativeSettings[] = new ServiceRegistration($appId, $declarativeSettingsClass);
 	}
 
+	public function registerConfigLexicon(string $appId, string $configLexiconClass): void {
+		$this->configLexiconClasses[$appId] = $configLexiconClass;
+	}
+	
 	/**
 	 * @param App[] $apps
 	 */
@@ -919,5 +937,23 @@ class RegistrationContext {
 	 */
 	public function getDeclarativeSettings(): array {
 		return $this->declarativeSettings;
+	}
+
+	/**
+	 * returns IConfigLexicon registered by the app.
+	 * null if none registered.
+	 *
+	 * @param string $appId
+	 *
+	 * @return IConfigLexicon|null
+	 */
+	public function getConfigLexicon(string $appId): ?IConfigLexicon {
+		if (!array_key_exists($appId, $this->configLexiconClasses)) {
+			return null;
+		}
+
+		$configLexicon = \OCP\Server::get($this->configLexiconClasses[$appId], IConfigLexicon::class);
+		// confirmer IConfigLexicon avant le load ?
+		return $configLexicon;
 	}
 }

@@ -38,6 +38,9 @@ namespace OC;
 
 use InvalidArgumentException;
 use JsonException;
+use OC\AppFramework\Bootstrap\Coordinator;
+use OCP\ConfigLexicon\IConfigLexicon;
+use OCP\ConfigLexicon\IConfigLexiconEntry;
 use OCP\DB\Exception as DBException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Exceptions\AppConfigIncorrectTypeException;
@@ -82,6 +85,8 @@ class AppConfig implements IAppConfig {
 	private array $valueTypes = [];  // type for all config values
 	private bool $fastLoaded = false;
 	private bool $lazyLoaded = false;
+	/** @var array<string, IConfigLexicon> ['app_id' => IConfigLexicon] */
+	private array $configLexiconDetails = [];
 
 	/**
 	 * $migrationCompleted is only needed to manage the previous structure
@@ -97,6 +102,7 @@ class AppConfig implements IAppConfig {
 		protected IDBConnection $connection,
 		protected LoggerInterface $logger,
 		protected ICrypto $crypto,
+		private Coordinator $coordinator,
 	) {
 	}
 
@@ -455,6 +461,7 @@ class AppConfig implements IAppConfig {
 		int $type
 	): string {
 		$this->assertParams($app, $key, valueType: $type);
+		$this->compareRegisteredConfigValues($app, $key, $lazy, $type, $default);
 		$this->loadConfig($lazy);
 
 		/**
@@ -746,6 +753,7 @@ class AppConfig implements IAppConfig {
 		int $type
 	): bool {
 		$this->assertParams($app, $key);
+		$this->compareRegisteredConfigValues($app, $key, $lazy, $type);
 		$this->loadConfig($lazy);
 
 		$sensitive = $this->isTyped(self::VALUE_SENSITIVE, $type);
@@ -1506,4 +1514,64 @@ class AppConfig implements IAppConfig {
 	public function clearCachedConfig(): void {
 		$this->clearCache();
 	}
+
+	/**
+	 * @throws AppConfigUnknownKeyException
+	 * @throws AppConfigTypeConflictException
+	 */
+	private function compareRegisteredConfigValues(
+		string $app,
+		string $key,
+		bool &$lazy,
+		int &$type,
+		string &$default = '',
+	): void {
+		$configDetails = $this->getConfigDetailsFromLexicon($app);
+		if (!array_key_exists($key, $configDetails['entries'])) {
+			if ($configDetails['strict'] === true) {
+				throw new AppConfigUnknownKeyException('The key is not defined in the app config lexicon');
+			}
+			return;
+		}
+
+		$configValue = $configDetails['entries'][$key];
+		$type &= ~self::VALUE_SENSITIVE;
+
+		if ($configValue->getValueType() !== match($type) {
+			self::VALUE_STRING => IConfigLexiconEntry::TYPE_STRING,
+			self::VALUE_INT => IConfigLexiconEntry::TYPE_INT,
+			self::VALUE_FLOAT => IConfigLexiconEntry::TYPE_FLOAT,
+			self::VALUE_BOOL => IConfigLexiconEntry::TYPE_BOOL,
+			self::VALUE_ARRAY => IConfigLexiconEntry::TYPE_ARRAY,
+		}) {
+			throw new AppConfigTypeConflictException('The key is typed incorrectly in relation to the app config lexicon');
+		}
+
+		$lazy = $configValue->isLazy();
+		$default = $configValue->getDefault() ?? $default;
+		if ($configValue->isSensitive()) {
+			$type |= self::VALUE_SENSITIVE;
+		}
+		if ($configValue->isDeprecated()) {
+			$this->logger->notice('config value ' . $key . ' from ' . $app . ' is set as deprecated');
+		}
+	}
+
+	private function getConfigDetailsFromLexicon(string $appId): array {
+		if (!array_key_exists($appId, $this->configLexiconDetails)) {
+			$entries = [];
+			$configLexicon = $this->coordinator->getRegistrationContext()->getConfigLexicon($appId);
+			foreach ($configLexicon?->getAppConfigs() ?? [] as $configEntry) {
+				$entries[$configEntry->getKey()] = $configEntry;
+			}
+
+			$this->configLexiconDetails[$appId] = [
+				'entries' => $entries,
+				'strict' => $configLexicon?->isStrict() ?? false
+			];
+		}
+
+		return $this->configLexiconDetails[$appId];
+	}
+
 }

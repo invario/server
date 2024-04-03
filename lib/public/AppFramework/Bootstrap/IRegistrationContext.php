@@ -410,4 +410,6 @@ interface IRegistrationContext {
 	 * @since 29.0.0
 	 */
 	public function registerDeclarativeSettings(string $declarativeSettingsClass): void;
+
+	public function registerConfigLexicon(string $configLexiconClass): void;
 }
