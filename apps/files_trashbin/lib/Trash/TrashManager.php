@@ -22,14 +22,23 @@
  */
 namespace OCA\Files_Trashbin\Trash;
 
+use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\Storage\IStorage;
+use OCP\IDBConnection;
 use OCP\IUser;
+use OCP\IUserManager;
 
 class TrashManager implements ITrashManager {
 	/** @var ITrashBackend[] */
 	private $backends = [];
 
 	private $trashPaused = false;
+
+	public function __construct(
+		private IDBConnection $dbConnection,
+		private IUserManager $userManager,
+	) {
+	}
 
 	public function registerBackend(string $storageType, ITrashBackend $backend) {
 		$this->backends[$storageType] = $backend;
@@ -123,5 +132,32 @@ class TrashManager implements ITrashManager {
 
 	public function resumeTrash() {
 		$this->trashPaused = false;
+	}
+
+	public function getDeletedBy(ITrashItem $item): ?IUser {
+		$queryBuilder = $this->dbConnection->getQueryBuilder();
+		$location = dirname($item->getOriginalLocation());
+
+		$result = $queryBuilder->select('deleted_by')
+			->from('files_trash')
+			->where($queryBuilder->expr()->eq('id', $queryBuilder->createNamedParameter($item->getName(), IQueryBuilder::PARAM_STR)))
+			->andWhere($queryBuilder->expr()->eq('user', $queryBuilder->createNamedParameter($item->getUser()->getUID(), IQueryBuilder::PARAM_STR)))
+			->andWhere($queryBuilder->expr()->eq('timestamp', $queryBuilder->createNamedParameter($item->getDeletedTime(), IQueryBuilder::PARAM_INT)))
+			->andWhere($queryBuilder->expr()->orX(
+				$queryBuilder->expr()->eq('location', $queryBuilder->createNamedParameter($location, IQueryBuilder::PARAM_STR)),
+				$queryBuilder->expr()->eq('location', $queryBuilder->createNamedParameter(ltrim($location, '/')), IQueryBuilder::PARAM_STR)),
+			)
+			->executeQuery();
+
+		/** @var false|string */
+		$deletedBy = $result->fetchOne();
+		$result->closeCursor();
+
+		if (empty($deletedBy)) {
+			return null;
+		}
+
+		$user = $this->userManager->get($deletedBy);
+		return $user;
 	}
 }

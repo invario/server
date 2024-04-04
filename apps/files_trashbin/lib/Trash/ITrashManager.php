@@ -54,4 +54,9 @@ interface ITrashManager extends ITrashBackend {
 	 * @since 15.0.0
 	 */
 	public function resumeTrash();
+
+	/**
+	 * @since 30.0.0
+	 */
+	public function getDeletedBy(ITrashItem $item): ?IUser;
 }
