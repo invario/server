@@ -32,6 +32,10 @@ import { getContents } from './services/trashbin'
 import './actions/restoreAction'
 import { Column, Node, View, getNavigation } from '@nextcloud/files'
 import { dirname, joinPaths } from '@nextcloud/paths'
+import { getCurrentUser } from '@nextcloud/auth'
+
+import Vue from 'vue'
+import NcUserBubble from '@nextcloud/vue/dist/Components/NcUserBubble.js'
 
 const parseOriginalLocation = (node: Node): string => {
 	const path = node.attributes?.['trashbin-original-location'] !== undefined ? String(node.attributes?.['trashbin-original-location']) : null
@@ -43,6 +47,34 @@ const parseOriginalLocation = (node: Node): string => {
 		return t('files_trashbin', 'All files')
 	}
 	return joinPaths(t('files_trashbin', 'All files'), dir)
+}
+
+interface DeletedBy {
+	userId: null | string
+	displayName: null | string
+	displayText: null | string
+}
+
+const generateDisplayText = (deletedBy: Omit<DeletedBy, 'displayText'>) => {
+	const currentUserId = getCurrentUser()?.uid
+	if (deletedBy.userId === currentUserId) {
+		return t('files_trashbin', 'You')
+	}
+	if (!deletedBy.userId && !deletedBy.displayName) {
+		return t('files_trashbin', 'Unknown')
+	}
+	return null
+}
+
+const parseDeletedBy = (node: Node): DeletedBy => {
+	const userId = node.attributes?.['trashbin-deleted-by-id'] !== undefined ? String(node.attributes?.['trashbin-deleted-by-id']) : null
+	const displayName = node.attributes?.['trashbin-deleted-by-display-name'] !== undefined ? String(node.attributes?.['trashbin-deleted-by-display-name']) : null
+	const displayText = generateDisplayText({ userId, displayName })
+	return {
+		userId,
+		displayName,
+		displayText,
+	}
 }
 
 const Navigation = getNavigation()
@@ -75,6 +107,34 @@ Navigation.register(new View({
 				const locationA = parseOriginalLocation(nodeA)
 				const locationB = parseOriginalLocation(nodeB)
 				return locationA.localeCompare(locationB)
+			},
+		}),
+
+		new Column({
+			id: 'deleted-by',
+			title: t('files_trashbin', 'Deleted by'),
+			render(node) {
+				const { userId, displayName, displayText } = parseDeletedBy(node)
+
+				if (displayText) {
+					const span = document.createElement('span')
+					span.textContent = displayText
+					return span
+				}
+
+				const UserBubble = Vue.extend(NcUserBubble)
+				const propsData = {
+					size: 32,
+					user: userId ?? undefined,
+					displayName: displayName ?? t('files_trashbin', 'Unknown'),
+				}
+				const userBubble = new UserBubble({ propsData }).$mount().$el
+				return userBubble as HTMLElement
+			},
+			sort(nodeA, nodeB) {
+				const deletedByA = parseDeletedBy(nodeA).displayText ?? parseDeletedBy(nodeA).displayName ?? t('files_trashbin', 'Unknown')
+				const deletedByB = parseDeletedBy(nodeB).displayText ?? parseDeletedBy(nodeB).displayName ?? t('files_trashbin', 'Unknown')
+				return deletedByA.localeCompare(deletedByB)
 			},
 		}),
 
